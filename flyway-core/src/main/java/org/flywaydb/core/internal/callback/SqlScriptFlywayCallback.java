@@ -18,6 +18,7 @@ package org.flywaydb.core.internal.callback;
 import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.MigrationInfo;
 import org.flywaydb.core.api.callback.FlywayCallback;
+import org.flywaydb.core.api.configuration.SQLFlywayConfiguration;
 import org.flywaydb.core.internal.dbsupport.DbSupport;
 import org.flywaydb.core.internal.dbsupport.JdbcTemplate;
 import org.flywaydb.core.internal.dbsupport.SqlScript;
