@@ -49,14 +49,14 @@ public class MongoBaseline implements Baseline {
 	/**
 	 * Creates a new MongoBaseline.
 	 *
-	 * @param client The {@link MongoClient} used for accessing the metadata table.
-	 * @param metaDataTable The metadata table.
-	 * @param baselineVersion The version to tag an existing MongoDB with when baselining.
+	 * @param client              The {@link MongoClient} used for accessing the metadata table.
+	 * @param metaDataTable       The metadata table.
+	 * @param baselineVersion     The version to tag an existing MongoDB with when baselining.
 	 * @param baselineDescription The description to tag the baseline migration with.
-	 * @param callbacks The list of callbacks that fire off before and after a baseline task executes.
+	 * @param callbacks           The list of callbacks that fire off before and after a baseline task executes.
 	 */
 	public MongoBaseline(MongoClient client, MongoMetaDataTable metaDataTable, MigrationVersion baselineVersion,
-											 String baselineDescription, MongoFlywayCallback[] callbacks) {
+						 String baselineDescription, MongoFlywayCallback[] callbacks) {
 		this.client = client;
 		this.metaDataTable = metaDataTable;
 		this.baselineVersion = baselineVersion;
@@ -71,7 +71,8 @@ public class MongoBaseline implements Baseline {
 		}
 			
 		if (metaDataTable.hasAppliedMigrations()) {
-			throw new FlywayException("Unable to baseline metadata table " + metaDataTable + " as it already contains migrations");
+			throw new FlywayException("Unable to baseline metadata table " + metaDataTable +
+					" as it already contains migrations");
 		}
 
 		baselineTransaction();
@@ -87,22 +88,22 @@ public class MongoBaseline implements Baseline {
 		if (metaDataTable.hasBaselineMarker()) {
 			AppliedMigration baselineMarker = metaDataTable.getBaselineMarker();
 
-			if (baselineVersion.equals(baselineMarker.getVersion())
-					&& baselineDescription.equals(baselineMarker.getDescription())) {
-				LOG.info("Metadata table " + metaDataTable + " already initialized with ("
-								 + baselineVersion + "," + baselineDescription + "). Skipping.");
+			if (baselineVersion.equals(baselineMarker.getVersion()) &&
+					baselineDescription.equals(baselineMarker.getDescription())) {
+				LOG.info("Metadata table " + metaDataTable + " already initialized with (" +
+						 baselineVersion + "," + baselineDescription + "). Skipping.");
 				return;
 			}
 
-			throw new FlywayException("Unable to baseline metadata table " + metaDataTable + " with ("
-																+ baselineVersion + "," + baselineDescription
-																+ ") as it has already been initialized with ("
-																+ baselineMarker.getVersion() + "," + baselineMarker.getDescription() + ")");
+			throw new FlywayException("Unable to baseline metadata table " + metaDataTable +
+					" with (" + baselineVersion + "," + baselineDescription +
+					") as it has already been initialized with (" + baselineMarker.getVersion() +
+					"," + baselineMarker.getDescription() + ")");
 		}
 
 		if (baselineVersion.equals(MigrationVersion.fromVersion("0"))) {
-			throw new FlywayException("Unable to baseline metadata table " + metaDataTable
-																+ " with version 0 as this version was used for schema creation");
+			throw new FlywayException("Unable to baseline metadata table " + metaDataTable +
+					" with version 0 as this version was used for schema creation");
 		}
 
 		metaDataTable.addBaselineMarker(baselineVersion, baselineDescription);

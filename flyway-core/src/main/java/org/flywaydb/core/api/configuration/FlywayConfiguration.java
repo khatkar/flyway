@@ -16,15 +16,7 @@
 package org.flywaydb.core.api.configuration;
 
 import org.flywaydb.core.api.MigrationVersion;
-import org.flywaydb.core.api.callback.FlywayCallback;
-import org.flywaydb.core.api.callback.SQLFlywayCallback;
-import org.flywaydb.core.api.callback.MongoFlywayCallback;
 import org.flywaydb.core.api.resolver.MigrationResolver;
-
-import com.mongodb.MongoClient;
-
-import javax.sql.DataSource;
-import java.util.Map;
 
 /**
  * Readonly interface for main flyway configuration. Can be used to provide configuration data to migrations and callbacks.
@@ -92,6 +84,13 @@ public interface FlywayConfiguration {
      * @return The name of the schema metadata table that will be used by flyway. (default: schema_version)
      */
     String getTable();
+
+    /**
+     * Retrieves the encoding of migrations.
+     *
+     * @return The encoding of migrations. (default: UTF-8)
+     */
+    String getEncoding();
 
     /**
      * Retrieves the locations to scan recursively for migrations.
