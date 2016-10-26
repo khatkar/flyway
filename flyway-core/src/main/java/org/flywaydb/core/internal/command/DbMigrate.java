@@ -296,7 +296,7 @@ public class DbMigrate implements Migrate {
         stopWatch.start();
 
         try {
-            final MigrationExecutor migrationExecutor = migration.getResolvedMigration().getExecutor();
+            final MigrationExecutor migrationExecutor = (MigrationExecutor) migration.getResolvedMigration().getExecutor();
             if (migrationExecutor.executeInTransaction()) {
                 new TransactionTemplate(connectionUserObjects).execute(new TransactionCallback<Object>() {
                     @Override
