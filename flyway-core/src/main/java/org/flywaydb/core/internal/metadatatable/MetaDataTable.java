@@ -15,15 +15,17 @@
  */
 package org.flywaydb.core.internal.metadatatable;
 
-import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.internal.dbsupport.Schema;
-
-import java.util.List;
 
 /**
  * The metadata table used to track all applied migrations.
  */
 public interface MetaDataTable extends FlywayMetaDataTable {
+
+	/**
+	 * Acquires an exclusive read-write lock on the metadata table. This lock will be released automatically on commit.
+	 */
+	void lock();
 
 	/**
 	 * Indicates in the metadata table that Flyway created these schemas.
@@ -32,10 +34,4 @@ public interface MetaDataTable extends FlywayMetaDataTable {
 	 */
 	void addSchemasMarker(Schema[] schemas);
 
-	/**
-     * Checks whether the metadata table contains a marker row for schema creation.
-     *
-     * @return {@code true} if it does, {@code false} if it doesn't.
-     */
-	boolean hasSchemasMarker();
 }
