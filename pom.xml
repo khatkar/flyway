@@ -73,6 +73,7 @@
         <module>flyway-sbt-largetest</module>
         <module>flyway-mongo-sbt</module>
         <module>flyway-mongo-sbt-largetest</module>
+        <module>flyway-mongo-commandline</module>
     </modules>
 
     <distributionManagement>
