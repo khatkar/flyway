@@ -31,7 +31,6 @@ import static org.junit.Assert.*;
 public class MongoFlywayCallbackSmallTest extends EmbeddedMongoDb {
 
     private static final String BASEDIR = "migration/subdir/dir1";
-    private static final String MONGO_PREFIX = "flyway.mongo.";
 
     protected MongoFlyway flyway;
     private MongoFlywayCallbackImpl callbackImpl;
@@ -40,9 +39,9 @@ public class MongoFlywayCallbackSmallTest extends EmbeddedMongoDb {
     @Before
     public void setup() throws Exception {
         Properties mongoProperties = new Properties();
-        mongoProperties.setProperty(MONGO_PREFIX + "locations", BASEDIR);
-        mongoProperties.setProperty(MONGO_PREFIX + "validateOnMigrate", "false");
-        mongoProperties.setProperty(MONGO_PREFIX + "uri", getMongoUri());
+        mongoProperties.setProperty("flyway.locations", BASEDIR);
+        mongoProperties.setProperty("flyway.validateOnMigrate", "false");
+        mongoProperties.setProperty("flyway.mongoUri", getMongoUri());
         callbackImpl = new MongoFlywayCallbackImpl(flyway);
         callbacks = new MongoFlywayCallback[]{callbackImpl};
         flyway = new MongoFlyway();

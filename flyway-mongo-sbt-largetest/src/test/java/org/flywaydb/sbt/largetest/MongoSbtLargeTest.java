@@ -36,19 +36,19 @@ public class MongoSbtLargeTest extends EmbeddedMongoDb {
 
     @Test
     public void sysPropsOverride() throws Exception {
-        String stdOut = runSbt("test1", 0, "-Dflyway.mongo.locations=db/migration", "flywayClean", "flywayMigrate");
+        String stdOut = runSbt("test1", 0, "-Dflyway.locations=db/migration", "flywayClean", "flywayMigrate");
         assertTrue(stdOut.contains("Successfully applied 1 migration"));
     }
 
     @Test
     public void useTestScope() throws Exception {
-        String stdOut = runSbt("test1", 0, "-Dflyway.mongo.locations=filesystem:src/main/resources/db/migration,filesystem:src/test/resources/db/migration", "test:flywayClean", "test:flywayMigrate");
+        String stdOut = runSbt("test1", 0, "-Dflyway.locations=filesystem:src/main/resources/db/migration,filesystem:src/test/resources/db/migration", "test:flywayClean", "test:flywayMigrate");
         assertTrue(stdOut.contains("Successfully applied 2 migration"));
     }
 
     @Test
     public void flywayUrlAsSysProps() throws Exception {
-        String stdOut = runSbt("test2", 0, "-Dflyway.mongo.uri=mongodb://localhost:27016/flyway_sample", "flywayClean", "flywayMigrate");
+        String stdOut = runSbt("test2", 0, "-Dflyway.mongoUri=mongodb://localhost:27016/flyway_sample", "flywayClean", "flywayMigrate");
         assertTrue(stdOut.contains("Successfully applied 2 migration"));
     }
 

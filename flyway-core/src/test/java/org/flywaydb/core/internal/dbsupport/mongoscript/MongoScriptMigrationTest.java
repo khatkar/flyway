@@ -29,11 +29,12 @@ import org.flywaydb.core.api.MigrationType;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.resolver.ResolvedMigration;
 import org.flywaydb.core.internal.dbsupport.FlywayMongoScriptException;
-import org.flywaydb.core.internal.dbsupport.mongo.MongoDatabaseUtil;
+import org.flywaydb.core.internal.util.MongoDatabaseUtil;
 import org.flywaydb.core.internal.info.MigrationInfoDumper;
 import org.flywaydb.core.internal.resolver.MongoFlywayConfigurationForTests;
 import org.flywaydb.core.internal.resolver.mongoscript.MongoScriptMigrationResolver;
 import org.flywaydb.core.internal.util.Location;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.scanner.Scanner;
 import org.flywaydb.core.migration.MongoScriptMigrationTestCase;
 import org.junit.Test;
@@ -149,6 +150,7 @@ public class MongoScriptMigrationTest extends MongoScriptMigrationTestCase {
         MongoScriptMigrationResolver mongoScriptMigrationResolver = new MongoScriptMigrationResolver(
                 new Scanner(Thread.currentThread().getContextClassLoader()),
                 new Location(BASEDIR),
+                PlaceholderReplacer.NO_PLACEHOLDERS,
                 MongoFlywayConfigurationForTests.create());
         List<ResolvedMigration> migrations = mongoScriptMigrationResolver.resolveMigrations();
         for (ResolvedMigration migration : migrations) {

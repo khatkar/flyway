@@ -61,7 +61,7 @@ public class MongoScriptSmallTest {
     }
 
     @Test
-    public void stripSqlCommentsMultiLineCommentMultipleLines() {
+    public void stripMongoCommentsMultiLineCommentMultipleLines() {
         lines.add("/*comment line");
         lines.add("more comment text*/");
         List<MongoStatement> mongoStatements = mongoScript.linesToStatements(lines);
@@ -70,6 +70,7 @@ public class MongoScriptSmallTest {
 
     @Test
     public void linesToStatements() {
+        lines.add("use(sample);");
         lines.add("db.runCommand({");
         lines.add("insert: 'sample',");
         lines.add("documents: [{item: 'pencil'}]");
@@ -80,8 +81,9 @@ public class MongoScriptSmallTest {
         assertEquals(1, mongoStatements.size());
 
         MongoStatement mongoStatement = mongoStatements.get(0);
-        assertEquals(1, mongoStatement.getLineNumber());
+        assertEquals(2, mongoStatement.getLineNumber());
         assertEquals("{insert: 'sample',documents: [{item: 'pencil'}]}", mongoStatement.getJson());
+        assertEquals("sample", mongoStatement.getDbName());
     }
 
     @Test

@@ -22,6 +22,8 @@ import org.flywaydb.core.api.configuration.MongoFlywayConfiguration;
 
 import com.mongodb.MongoClient;
 
+import java.util.Map;
+
 public class MongoFlywayConfigurationForTests implements MongoFlywayConfiguration {
 
 	private ClassLoader classLoader;
@@ -32,6 +34,7 @@ public class MongoFlywayConfigurationForTests implements MongoFlywayConfiguratio
     private String repeatableMongoMigrationPrefix;
 	private String mongoMigrationSeparator;
 	private String mongoMigrationSuffix;
+    private boolean skipDefaultResolvers;
 
 	public MongoFlywayConfigurationForTests(ClassLoader classLoader, String[] locations, String encoding, String dbName,
                                             String mongoMigrationPrefix, String repeatableMongoMigrationPrefix,
@@ -76,9 +79,13 @@ public class MongoFlywayConfigurationForTests implements MongoFlywayConfiguratio
 		return null;
 	}
 
+    public void setSkipDefaultResolvers(boolean skipDefaultResolvers) {
+        this.skipDefaultResolvers = skipDefaultResolvers;
+    }
+
 	@Override
 	public boolean isSkipDefaultResolvers() {
-		return false;
+        return skipDefaultResolvers;
 	}
 
 	public boolean isSkipDefaultCallbacks() {
@@ -114,6 +121,26 @@ public class MongoFlywayConfigurationForTests implements MongoFlywayConfiguratio
 	public String getMongoMigrationSuffix() {
 		return mongoMigrationSuffix;
 	}
+
+    @Override
+    public boolean isPlaceholderReplacement() {
+        return false;
+    }
+
+    @Override
+    public String getPlaceholderSuffix() {
+        return null;
+    }
+
+    @Override
+    public String getPlaceholderPrefix() {
+        return null;
+    }
+
+    @Override
+    public Map<String, String> getPlaceholders() {
+        return null;
+    }
 
 	@Override
 	public String getTable() {

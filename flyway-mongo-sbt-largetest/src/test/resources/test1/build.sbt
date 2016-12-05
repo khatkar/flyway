@@ -13,8 +13,8 @@ resolvers += (
     "Local Maven Repository" at Path.userHome.asFile.toURI.toURL + ".m2/repository"
 )
 
-flywayUri := "mongodb://localhost:27016/flyway_sample"
+flywayMongoUri := "mongodb://localhost:27016/flyway_sample"
 
 flywayLocations += "db/sbt"
 
-flywayUri in Test := "mongodb://localhost:27016/flyway_sample"
+flywayMongoUri in Test := "mongodb://localhost:27016/flyway_sample"

@@ -27,6 +27,7 @@ import org.flywaydb.core.internal.resolver.ResolvedMigrationComparator;
 import org.flywaydb.core.internal.resolver.ResolvedMigrationImpl;
 import org.flywaydb.core.internal.util.Location;
 import org.flywaydb.core.internal.util.Pair;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.scanner.Resource;
 import org.flywaydb.core.internal.util.scanner.Scanner;
 
@@ -60,6 +61,11 @@ public class MongoScriptMigrationResolver implements MigrationResolver {
     private final Location location;
 
     /**
+     * The placeholder replacer to apply to mongo js migration scripts.
+     */
+    private final PlaceholderReplacer placeholderReplacer;
+
+    /**
      * The encoding of MongoScript migrations.
      */
     private final String encoding;
@@ -87,14 +93,17 @@ public class MongoScriptMigrationResolver implements MigrationResolver {
     /**
      * Creates a new instance.
      *
-     * @param scanner      The Scanner for loading migrations on the classpath.
-     * @param location     The location on the classpath where to migrations are located.
-     * @param config       The flyway instance containing Mongo relevant information.
+     * @param scanner              The Scanner for loading migrations on the classpath.
+     * @param location             The location on the classpath where to migrations are located.
+     * @param placeholderReplacer  The placeholder replacer to apply to mongo js migration scripts.
+     * @param config               The flyway instance containing Mongo relevant information.
      */
     public MongoScriptMigrationResolver(Scanner scanner, Location location,
+                                        PlaceholderReplacer placeholderReplacer,
                                         MongoFlywayConfiguration config) {
         this.scanner = scanner;
         this.location = location;
+        this.placeholderReplacer = placeholderReplacer;
         this.encoding = config.getEncoding();
         this.databaseName = config.getDatabaseName();
         this.mongoMigrationPrefix = config.getMongoMigrationPrefix();
@@ -106,21 +115,23 @@ public class MongoScriptMigrationResolver implements MigrationResolver {
     /**
      * Creates a new instance.
      *
-     * @param scanner                             The Scanner for loading migrations on the classpath.
-     * @param location                            The location on the classpath where to migrations are located.
-     * @param encoding                            The encoding of mongo javascript migrations.
-     * @param databaseName                        The database name where migrations will be applied.
-     * @param mongoMigrationPrefix                The prefix for Mongo migrations.
-     * @param repeatableMongoMigrationPrefix      The prefix for repeatable Mongo migrations.
-     * @param mongoMigrationSeparator             The separator for Mongo javascript migrations.
-     * @param mongoMigrationSuffix                The suffix for Mongo javascript migrations.
+     * @param scanner                         The Scanner for loading migrations on the classpath.
+     * @param location                        The location on the classpath where to migrations are located.
+     * @param placeholderReplacer             The placeholder replacer to apply to mongo js migration scripts.
+     * @param encoding                        The encoding of mongo javascript migrations.
+     * @param databaseName                    The database name where migrations will be applied.
+     * @param mongoMigrationPrefix            The prefix for Mongo migrations.
+     * @param repeatableMongoMigrationPrefix  The prefix for repeatable Mongo migrations.
+     * @param mongoMigrationSeparator         The separator for Mongo javascript migrations.
+     * @param mongoMigrationSuffix            The suffix for Mongo javascript migrations.
      */
-    public MongoScriptMigrationResolver(Scanner scanner, Location location, String encoding,
-                                        String databaseName, String mongoMigrationPrefix,
+    public MongoScriptMigrationResolver(Scanner scanner, Location location, PlaceholderReplacer placeholderReplacer,
+                                        String encoding, String databaseName, String mongoMigrationPrefix,
                                         String repeatableMongoMigrationPrefix,
                                         String mongoMigrationSeparator, String mongoMigrationSuffix) {
         this.scanner = scanner;
         this.location = location;
+        this.placeholderReplacer = placeholderReplacer;
         this.encoding = encoding;
         this.databaseName = databaseName;
         this.mongoMigrationPrefix = mongoMigrationPrefix;
@@ -155,7 +166,7 @@ public class MongoScriptMigrationResolver implements MigrationResolver {
             migration.setChecksum(calculateChecksum(resource, resource.loadAsString(encoding)));
             migration.setType(MigrationType.MONGOSCRIPT);
             migration.setPhysicalLocation(resource.getLocationOnDisk());
-            migration.setExecutor(new MongoScriptMigrationExecutor(resource, encoding, databaseName));
+            migration.setExecutor(new MongoScriptMigrationExecutor(resource, encoding, databaseName, placeholderReplacer));
             migrations.add(migration);
         }
     }

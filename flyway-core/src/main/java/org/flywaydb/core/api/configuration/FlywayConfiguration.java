@@ -18,6 +18,8 @@ package org.flywaydb.core.api.configuration;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.resolver.MigrationResolver;
 
+import java.util.Map;
+
 /**
  * Readonly interface for main flyway configuration. Can be used to provide configuration data to migrations and callbacks.
  */
@@ -66,6 +68,34 @@ public interface FlywayConfiguration {
      * @return Whether default built-in callbacks should be skipped. (default: false)
      */
     boolean isSkipDefaultCallbacks();
+
+    /**
+     * Checks whether placeholders should be replaced.
+     *
+     * @return Whether placeholders should be replaced. (default: true)
+     */
+    boolean isPlaceholderReplacement();
+
+    /**
+     * Retrieves the suffix of every placeholder.
+     *
+     * @return The suffix of every placeholder. (default: } )
+     */
+    String getPlaceholderSuffix();
+
+    /**
+     * Retrieves the prefix of every placeholder.
+     *
+     * @return The prefix of every placeholder. (default: ${ )
+     */
+    String getPlaceholderPrefix();
+
+    /**
+     * Retrieves the map of &lt;placeholder, replacementValue&gt; to apply to sql migration scripts.
+     *
+     * @return The map of &lt;placeholder, replacementValue&gt; to apply to sql migration scripts.
+     */
+    Map<String, String> getPlaceholders();
 
 	/**
      * Retrieves the target version up to which Flyway should consider migrations.

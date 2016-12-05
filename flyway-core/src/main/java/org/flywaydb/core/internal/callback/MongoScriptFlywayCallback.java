@@ -23,6 +23,7 @@ import org.flywaydb.core.api.configuration.MongoFlywayConfiguration;
 import org.flywaydb.core.internal.dbsupport.MongoScript;
 import org.flywaydb.core.internal.util.Location;
 import org.flywaydb.core.internal.util.Locations;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.logging.Log;
 import org.flywaydb.core.internal.util.logging.LogFactory;
 import org.flywaydb.core.internal.util.scanner.Resource;
@@ -65,11 +66,14 @@ public class MongoScriptFlywayCallback extends MongoFlywayCallback {
     /**
      * Creates a new instance.
      *
-     * @param scanner          The Scanner for loading migrations on the classpath.
-     * @param locations        The locations where migrations are located.
-     * @param configuration    The Mongo configuration object
+     * @param scanner               The Scanner for loading migrations on the classpath.
+     * @param locations             The locations where migrations are located.
+     * @param placeholderReplacer   The placeholder replacer to use.
+     * @param configuration         The Mongo configuration object
      */
-    public MongoScriptFlywayCallback(Scanner scanner, Locations locations, MongoFlywayConfiguration configuration) {
+    public MongoScriptFlywayCallback(Scanner scanner, Locations locations,
+                                     PlaceholderReplacer placeholderReplacer,
+                                     MongoFlywayConfiguration configuration) {
         super(configuration);
         String encoding = configuration.getEncoding();
         String mongoMigrationSuffix = configuration.getMongoMigrationSuffix();
@@ -97,7 +101,7 @@ public class MongoScriptFlywayCallback extends MongoFlywayCallback {
                                 "-> " + existing.getResource().getLocationOnDisk() + "\n" +
                                 "-> " + resource.getLocationOnDisk());
                     }
-                    scripts.put(key, new MongoScript(resource, encoding, databaseName));
+                    scripts.put(key, new MongoScript(resource, encoding, databaseName, placeholderReplacer));
                 }
             }
         }

@@ -21,6 +21,7 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import org.bson.json.JsonParseException;
 import org.flywaydb.core.api.FlywayException;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.StringUtils;
 import org.flywaydb.core.internal.util.logging.Log;
 import org.flywaydb.core.internal.util.logging.LogFactory;
@@ -64,9 +65,9 @@ public class MongoScript {
      * @param databaseName      The database name where the MongoScript will be applied.
      */
     public MongoScript(String mongoScriptSource, String databaseName) {
-        this.mongoStatements = parse(mongoScriptSource);
         this.resource = null;
         this.databaseName = databaseName;
+        this.mongoStatements = parse(mongoScriptSource);
     }
 
     /**
@@ -75,12 +76,13 @@ public class MongoScript {
      * @param mongoScriptResource  The resource containing the statements.
      * @param encoding             The encoding to use.
      * @param databaseName         The database name where the MongoScript will be applied.
+     * @param placeholderReplacer  The placeholder replacer to apply to mongo js migration scripts.
      */
-    public MongoScript(Resource mongoScriptResource, String encoding, String databaseName) {
+    public MongoScript(Resource mongoScriptResource, String encoding, String databaseName, PlaceholderReplacer placeholderReplacer) {
         String mongoScriptSource = mongoScriptResource.loadAsString(encoding);
-        this.mongoStatements = parse(mongoScriptSource);
         this.resource = mongoScriptResource;
         this.databaseName = databaseName;
+        this.mongoStatements = parse(placeholderReplacer.replacePlaceholders(mongoScriptSource));
     }
 
     /**
@@ -96,8 +98,8 @@ public class MongoScript {
      * @param mongoClient The MongoClient to use to execute this script.
      */
     public void execute(final MongoClient mongoClient) {
-        MongoDatabase mongoDatabase = mongoClient.getDatabase(databaseName);
         for (MongoStatement mongoStatement : mongoStatements) {
+            MongoDatabase mongoDatabase = mongoClient.getDatabase(mongoStatement.getDbName());
             LOG.debug("Executing MONGO: " + mongoStatement);
             try {
                 mongoDatabase.runCommand(Document.parse(mongoStatement.getJson()));
@@ -132,6 +134,7 @@ public class MongoScript {
         List<MongoStatement> statements = new ArrayList<MongoStatement>();
 
         MongoStatementBuilder mongoStatementBuilder = new MongoStatementBuilder();
+        String dbNameInScope = databaseName;
 
         for (int lineNumber = 1; lineNumber <= lines.size(); lineNumber++) {
             String line = lines.get(lineNumber - 1);
@@ -149,11 +152,17 @@ public class MongoScript {
             if (mongoStatementBuilder.canDiscard()) {
                 mongoStatementBuilder = new MongoStatementBuilder();
             } else if (mongoStatementBuilder.isTerminated()) {
-                MongoStatement mongoStatement = mongoStatementBuilder.getMongoStatement();
-                if (mongoStatement != null) {
-                    statements.add(mongoStatement);
-                    LOG.debug("Found statement at line " + mongoStatement.getLineNumber() +
-                            ": " + mongoStatement.getJson());
+                String currentDbNameInScope = mongoStatementBuilder.getDbName();
+                if (currentDbNameInScope != null) {
+                    dbNameInScope = currentDbNameInScope;
+                    LOG.debug("Changing database in scope to: " + dbNameInScope);
+                } else {
+                    MongoStatement mongoStatement = mongoStatementBuilder.getMongoStatement(dbNameInScope);
+                    if (mongoStatement != null) {
+                        statements.add(mongoStatement);
+                        LOG.debug("Found statement at line " + mongoStatement.getLineNumber() +
+                                ": " + mongoStatement.getJson());
+                    }
                 }
                 mongoStatementBuilder = new MongoStatementBuilder();
             }
@@ -161,7 +170,7 @@ public class MongoScript {
 
         // Catch any statements not followed by delimiter.
         if (!mongoStatementBuilder.isEmpty()) {
-            statements.add(mongoStatementBuilder.getMongoStatement());
+            statements.add(mongoStatementBuilder.getMongoStatement(dbNameInScope));
         }
 
         return statements;

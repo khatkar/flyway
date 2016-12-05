@@ -93,34 +93,6 @@ public interface SQLFlywayConfiguration extends FlywayConfiguration {
 	String getSqlMigrationPrefix();
 
 	/**
-	 * Checks whether placeholders should be replaced.
-	 *
-	 * @return Whether placeholders should be replaced. (default: true)
-	 */
-	boolean isPlaceholderReplacement();
-
-	/**
-	 * Retrieves the suffix of every placeholder.
-	 *
-	 * @return The suffix of every placeholder. (default: } )
-	 */
-	String getPlaceholderSuffix();
-
-	/**
-	 * Retrieves the prefix of every placeholder.
-	 *
-	 * @return The prefix of every placeholder. (default: ${ )
-	 */
-	String getPlaceholderPrefix();
-
-	/**
-	 * Retrieves the map of &lt;placeholder, replacementValue&gt; to apply to sql migration scripts.
-	 *
-	 * @return The map of &lt;placeholder, replacementValue&gt; to apply to sql migration scripts.
-	 */
-	Map<String, String> getPlaceholders();
-
-	/**
 	 * Retrieves the schemas managed by Flyway.  These schema names are case-sensitive.
 	 * <p>Consequences:</p>
 	 * <ul>

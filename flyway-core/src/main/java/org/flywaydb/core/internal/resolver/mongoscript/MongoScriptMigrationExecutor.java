@@ -18,6 +18,7 @@ package org.flywaydb.core.internal.resolver.mongoscript;
 import com.mongodb.MongoClient;
 import org.flywaydb.core.api.resolver.AbstractMongoMigrationExecutor;
 import org.flywaydb.core.internal.dbsupport.MongoScript;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.scanner.Resource;
 
 public class MongoScriptMigrationExecutor extends AbstractMongoMigrationExecutor {
@@ -36,7 +37,12 @@ public class MongoScriptMigrationExecutor extends AbstractMongoMigrationExecutor
     /**
      * The database to use.
      */
-    private String databaseName;
+    private final String databaseName;
+
+    /**
+     * The placeholder replacer to apply to mongo js migration scripts.
+     */
+    private final PlaceholderReplacer placeholderReplacer;
 
     /**
      * Creates a new mongo javascript migration.
@@ -44,16 +50,21 @@ public class MongoScriptMigrationExecutor extends AbstractMongoMigrationExecutor
      * @param mongoScriptResource   The resource containing the MongoScript.
      * @param encoding              The encoding of this Javascript migration.
      * @param databaseName          The database name on which migration will be applied.
+     * @param placeholderReplacer   The placeholder replacer to apply to mongo js migration scripts.
      */
-    public MongoScriptMigrationExecutor(Resource mongoScriptResource, String encoding, String databaseName) {
+    public MongoScriptMigrationExecutor(Resource mongoScriptResource,
+                                        String encoding,
+                                        String databaseName,
+                                        PlaceholderReplacer placeholderReplacer) {
         this.mongoScriptResource = mongoScriptResource;
         this.encoding = encoding;
         this.databaseName = databaseName;
+        this.placeholderReplacer = placeholderReplacer;
     }
 
     @Override
     public void execute(MongoClient mongoClient) {
-        MongoScript mongoScript = new MongoScript(mongoScriptResource, encoding, databaseName);
+        MongoScript mongoScript = new MongoScript(mongoScriptResource, encoding, databaseName, placeholderReplacer);
         mongoScript.execute(mongoClient);
     }
 
