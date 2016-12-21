@@ -30,14 +30,21 @@ public class MongoStatement {
     private String json;
 
     /**
+     * The database name where this mongo statement will be applied.
+     */
+    private String dbName;
+
+    /**
      * Creates a new MongoStatement.
      *
      * @param lineNumber The original line number where the statement was located in the script it came from.
      * @param json  JSON string related with this MongoStatement.
+     * @param dbName the database name where this statement will be applied.
      */
-    public MongoStatement(int lineNumber, String json) {
+    public MongoStatement(int lineNumber, String json, String dbName) {
         this.lineNumber = lineNumber;
         this.json = json;
+        this.dbName = dbName;
     }
 
     /**
@@ -54,4 +61,10 @@ public class MongoStatement {
         return json;
     }
 
+    /**
+     * @return The database name where this mongo statement will be applied.
+     */
+    public String getDbName() {
+        return dbName;
+    }
 }

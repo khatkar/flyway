@@ -20,17 +20,16 @@ import org.flywaydb.core.MongoFlyway;
 import java.util.Properties;
 
 public class Main {
-	private static final String MONGO_PREFIX = "flyway.mongo.";
-	
-	public static void main(String[] args) throws Exception {
+
+    public static void main(String[] args) throws Exception {
         Properties props = new Properties();
         MongoFlyway mongoFlyway = new MongoFlyway();
 
-        props.setProperty(MONGO_PREFIX + "locations", "org.flywaydb.sample.mongodb.migrations, db/migration");
-        props.setProperty(MONGO_PREFIX + "validateOnMigrate", "false");
-        props.setProperty(MONGO_PREFIX + "uri", "mongodb://localhost:27017/db1");
+        props.setProperty("flyway.locations", "org.flywaydb.sample.mongodb.migrations, db/migration");
+        props.setProperty("flyway.validateOnMigrate", "false");
+        props.setProperty("flyway.mongoUri", "mongodb://localhost:27017/db1");
+        props.setProperty("flyway.placeholders.first_name", "Alice");
         mongoFlyway.configure(props);
-
         mongoFlyway.migrate();
 	}
 

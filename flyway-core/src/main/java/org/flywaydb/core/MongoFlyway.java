@@ -27,13 +27,14 @@ import org.flywaydb.core.internal.command.MongoClean;
 import org.flywaydb.core.internal.command.MongoMigrate;
 import org.flywaydb.core.internal.command.MongoRepair;
 import org.flywaydb.core.internal.command.MongoValidate;
-import org.flywaydb.core.internal.dbsupport.mongo.MongoDatabaseUtil;
+import org.flywaydb.core.internal.util.MongoDatabaseUtil;
 import org.flywaydb.core.internal.info.MigrationInfoServiceImpl;
 import org.flywaydb.core.internal.metadatatable.MongoMetaDataTable;
 import org.flywaydb.core.internal.resolver.CompositeMongoMigrationResolver;
 import org.flywaydb.core.internal.util.ClassUtils;
 import org.flywaydb.core.internal.util.ConfigurationInjectionUtils;
 import org.flywaydb.core.internal.util.Locations;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.StringUtils;
 import org.flywaydb.core.internal.util.VersionPrinter;
 import org.flywaydb.core.internal.util.logging.Log;
@@ -45,6 +46,7 @@ import com.mongodb.MongoClientURI;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +61,11 @@ import java.util.Set;
  */
 public class MongoFlyway implements MongoFlywayConfiguration {
 	private static final Log LOG = LogFactory.getLog(MongoFlyway.class);
+
+    /**
+     * Property name prefix for placeholders that are configured through properties.
+     */
+    private static final String PLACEHOLDERS_PROPERTY_PREFIX = "flyway.placeholders.";
 
 	/**
 	 * The locations to scan recursively for migrations.
@@ -97,6 +104,26 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 	 * version of the schema (default: the latest version)
 	 */
 	private MigrationVersion target = MigrationVersion.LATEST;
+
+    /**
+     * Whether placeholders should be replaced. (default: true)
+     */
+    private boolean placeholderReplacement = true;
+
+    /**
+     * The map of &lt;placeholder, replacementValue&gt; to apply to mongo js migration scripts.
+     */
+    private Map<String, String> placeholders = new HashMap<String, String>();
+
+    /**
+     * The prefix of every placeholder. (default: ${ )
+     */
+    private String placeholderPrefix = "${";
+
+    /**
+     * The suffix of every placeholder. (default: } )
+     */
+    private String placeholderSuffix = "}";
 
 	/**
 	 * The file name prefix for Mongo migrations. (default: V)
@@ -241,13 +268,6 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
 	/**
-	 * Whether to allow mixing transactional and non-transactional statements within the same migration.
-	 *
-	 * {@code true} if mixed migrations should be allowed. {@code false} if an error should be thrown instead. (default: {@code false})
-	 */
-	private boolean allowMixedMigrations;
-
-	/**
 	 * Creates a new instance of MongoFlyway. This is your starting point.
 	 */
 	public MongoFlyway() {
@@ -277,6 +297,30 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 	public MigrationVersion getTarget() {
 		return target;
 	}
+
+    /**
+     * Checks whether placeholders should be replaced.
+     *
+     * @return Whether placeholders should be replaced. (default: true)
+     */
+    public boolean isPlaceholderReplacement() {
+        return placeholderReplacement;
+    }
+
+    @Override
+    public Map<String, String> getPlaceholders() {
+        return placeholders;
+    }
+
+    @Override
+    public String getPlaceholderPrefix() {
+        return placeholderPrefix;
+    }
+
+    @Override
+    public String getPlaceholderSuffix() {
+        return placeholderSuffix;
+    }
 
 	@Override
 	public String getMongoMigrationPrefix() {
@@ -488,6 +532,49 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 		this.encoding = encoding;
 	}
 
+    /**
+     * Sets whether placeholders should be replaced.
+     *
+     * @param placeholderReplacement Whether placeholders should be replaced. (default: true)
+     */
+    public void setPlaceholderReplacement(boolean placeholderReplacement) {
+        this.placeholderReplacement = placeholderReplacement;
+    }
+
+    /**
+     * Sets the placeholders to replace in mongo js migration scripts.
+     *
+     * @param placeholders The map of &lt;placeholder, replacementValue&gt; to apply to mongo js
+     *                     migration scripts.
+     */
+    public void setPlaceholders(Map<String, String> placeholders) {
+        this.placeholders = placeholders;
+    }
+
+    /**
+     * Sets the prefix of every placeholder.
+     *
+     * @param placeholderPrefix The prefix of every placeholder. (default: ${ )
+     */
+    public void setPlaceholderPrefix(String placeholderPrefix) {
+        if (!StringUtils.hasLength(placeholderPrefix)) {
+            throw new FlywayException("placeholderPrefix cannot be empty!");
+        }
+        this.placeholderPrefix = placeholderPrefix;
+    }
+
+    /**
+     * Sets the suffix of every placeholder.
+     *
+     * @param placeholderSuffix The suffix of every placeholder. (default: } )
+     */
+    public void setPlaceholderSuffix(String placeholderSuffix) {
+        if (!StringUtils.hasLength(placeholderSuffix)) {
+            throw new FlywayException("placeholderSuffix cannot be empty!");
+        }
+        this.placeholderSuffix = placeholderSuffix;
+    }
+
 	/**
 	 * Sets the file name prefix for Mongo JavaScript migrations.
 	 * <p/>
@@ -591,17 +678,20 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 	}
 
 	/**
-	 * Sets the MongoClient to use. Must have the necessary privileges to execute ddl.
+	 * Sets the MongoClientURI to use.
 	 *
      * To use a custom ClassLoader, setClassLoader() must be called prior to calling this method.
      *
-	 * @param uri   MongoDB connection URI used to connect to a MongoDB database server.
+	 * @param uri   MongoClient URI used to connect to a MongoDB database server.
 	 */
-	private void setMongoClient(String uri) {
+	public void setMongoClientUri(String uri) {
         MongoClientURI mongoUri = new MongoClientURI(uri);
         this.databaseName = mongoUri.getDatabase();
-		this.client = new MongoClient(mongoUri);
-		createdMongoClient = true;
+        if (databaseName == null) {
+            throw new FlywayException("Cannot find database from Mongo URI!");
+        }
+        this.client = new MongoClient(mongoUri);
+        createdMongoClient = true;
 	}
 
 	/**
@@ -911,6 +1001,30 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 		});
 	}
 
+    /**
+     * Creates the MigrationResolver.
+     *
+     * @param scanner   The Scanner for resolving migrations.
+     * @return A new, fully configured, MigrationResolver instance.
+     */
+    private MigrationResolver createMigrationResolver(Scanner scanner) {
+        for (MigrationResolver resolver : resolvers) {
+            ConfigurationInjectionUtils.injectFlywayConfiguration(resolver, this);
+        }
+
+        return new CompositeMongoMigrationResolver(scanner, locations, this, createPlaceholderReplacer(), resolvers);
+    }
+
+    /**
+     * @return A new, fully configured, PlaceholderReplacer.
+     */
+    private PlaceholderReplacer createPlaceholderReplacer() {
+        if (placeholderReplacement) {
+            return new PlaceholderReplacer(placeholders, placeholderPrefix, placeholderSuffix);
+        }
+        return PlaceholderReplacer.NO_PLACEHOLDERS;
+    }
+
 	/**
 	 * Configures Flyway with these properties. This overwrites any existing configuration.
 	 * Property names are documented in the flyway maven plugin.
@@ -927,18 +1041,30 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 			props.put(entry.getKey().toString(), entry.getValue().toString());
 		}
 
-		String uriProp = props.remove("flyway.mongo.uri");
+		String uriProp = props.remove("flyway.mongoUri");
 
 		if (StringUtils.hasText(uriProp)) {
-			setMongoClient(uriProp);
+			setMongoClientUri(uriProp);
 		} else {
-			LOG.warn("Incomplete MongoDB configuration! flyway.mongo.uri must be set.");
+			LOG.warn("Incomplete MongoDB configuration! flyway.mongoUri must be set.");
 		}
 
-		String locationsProp = props.remove("flyway.mongo.locations");
+		String locationsProp = props.remove("flyway.locations");
 		if (locationsProp != null) {
 			setLocations(StringUtils.tokenizeToStringArray(locationsProp, ","));
 		}
+        String placeholderReplacementProp = props.remove("flyway.placeholderReplacement");
+        if (placeholderReplacementProp != null) {
+            setPlaceholderReplacement(Boolean.parseBoolean(placeholderReplacementProp));
+        }
+        String placeholderPrefixProp = props.remove("flyway.placeholderPrefix");
+        if (placeholderPrefixProp != null) {
+            setPlaceholderPrefix(placeholderPrefixProp);
+        }
+        String placeholderSuffixProp = props.remove("flyway.placeholderSuffix");
+        if (placeholderSuffixProp != null) {
+            setPlaceholderSuffix(placeholderSuffixProp);
+        }
 		String mongoMigrationPrefixProp = props.remove("flyway.mongoMigrationPrefix");
 		if (mongoMigrationPrefixProp != null) {
 			setMongoMigrationPrefix(mongoMigrationPrefixProp);
@@ -959,82 +1085,84 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 		if (encodingProp != null) {
 			setEncoding(encodingProp);
 		}
-		String tableProp = props.remove("flyway.mongo.table");
+		String tableProp = props.remove("flyway.table");
 		if (tableProp != null) {
 			setTable(tableProp);
 		}
-		String cleanOnValidationErrorProp = props.remove("flyway.mongo.cleanOnValidationError");
+		String cleanOnValidationErrorProp = props.remove("flyway.cleanOnValidationError");
 		if (cleanOnValidationErrorProp != null) {
 			setCleanOnValidationError(Boolean.parseBoolean(cleanOnValidationErrorProp));
 		}
-		String cleanDisabledProp = props.remove("flyway.mongo.cleanDisabled");
+		String cleanDisabledProp = props.remove("flyway.cleanDisabled");
 		if (cleanDisabledProp != null) {
 			setCleanDisabled(Boolean.parseBoolean(cleanDisabledProp));
 		}
-		String validateOnMigrateProp = props.remove("flyway.mongo.validateOnMigrate");
+		String validateOnMigrateProp = props.remove("flyway.validateOnMigrate");
 		if (validateOnMigrateProp != null) {
 			setValidateOnMigrate(Boolean.parseBoolean(validateOnMigrateProp));
 		}
-		String baselineVersionProp = props.remove("flyway.mongo.baselineVersion");
+		String baselineVersionProp = props.remove("flyway.baselineVersion");
 		if (baselineVersionProp != null) {
 			setBaselineVersion(MigrationVersion.fromVersion(baselineVersionProp));
 		}
-		String baselineDescriptionProp = props.remove("flyway.mongo.baselineDescription");
+		String baselineDescriptionProp = props.remove("flyway.baselineDescription");
 		if (baselineDescriptionProp != null) {
 			setBaselineDescription(baselineDescriptionProp);
 		}
-		String baselineOnMigrateProp = props.remove("flyway.mongo.baselineOnMigrate");
+		String baselineOnMigrateProp = props.remove("flyway.baselineOnMigrate");
 		if (baselineOnMigrateProp != null) {
 			setBaselineOnMigrate(Boolean.parseBoolean(baselineOnMigrateProp));
 		}
-		String ignoreFutureMigrationsProp = props.remove("flyway.mongo.ignoreFutureMigrations");
+		String ignoreFutureMigrationsProp = props.remove("flyway.ignoreFutureMigrations");
 		if (ignoreFutureMigrationsProp != null) {
 			setIgnoreFutureMigrations(Boolean.parseBoolean(ignoreFutureMigrationsProp));
 		}
-		String targetProp = props.remove("flyway.mongo.target");
+		String targetProp = props.remove("flyway.target");
 		if (targetProp != null) {
 			setTarget(MigrationVersion.fromVersion(targetProp));
 		}
-		String outOfOrderProp = props.remove("flyway.mongo.outOfOrder");
+		String outOfOrderProp = props.remove("flyway.outOfOrder");
 		if (outOfOrderProp != null) {
 			setOutOfOrder(Boolean.parseBoolean(outOfOrderProp));
 		}
-		String resolversProp = props.remove("flyway.mongo.resolvers");
+		String resolversProp = props.remove("flyway.resolvers");
 		if (StringUtils.hasLength(resolversProp)) {
 			setResolversAsClassNames(StringUtils.tokenizeToStringArray(resolversProp, ","));
 		}
-		String skipDefaultResolversProp = props.remove("flyway.mongo.skipDefaultResolvers");
+		String skipDefaultResolversProp = props.remove("flyway.skipDefaultResolvers");
 		if (skipDefaultResolversProp != null) {
 			setSkipDefaultResolvers(Boolean.parseBoolean(skipDefaultResolversProp));
 		}
-		String callbacksProp = props.remove("flyway.mongo.callbacks");
+		String callbacksProp = props.remove("flyway.callbacks");
 		if (StringUtils.hasLength(callbacksProp)) {
 			setMongoCallbacksAsClassNames(StringUtils.tokenizeToStringArray(callbacksProp, ","));
 		}
-		String skipDefaultCallbacksProp = props.remove("flyway.mongo.skipDefaultCallbacks");
+		String skipDefaultCallbacksProp = props.remove("flyway.skipDefaultCallbacks");
 		if (skipDefaultCallbacksProp != null) {
 			setSkipDefaultCallbacks(Boolean.parseBoolean(skipDefaultCallbacksProp));
 		}
 
+        Map<String, String> placeholdersFromProps = new HashMap<String, String>(placeholders);
+        Iterator<Map.Entry<String, String>> iterator = props.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, String> entry = iterator.next();
+            String propertyName = entry.getKey();
+
+            if (propertyName.startsWith(PLACEHOLDERS_PROPERTY_PREFIX)
+                    && propertyName.length() > PLACEHOLDERS_PROPERTY_PREFIX.length()) {
+                String placeholderName = propertyName.substring(PLACEHOLDERS_PROPERTY_PREFIX.length());
+                String placeholderValue = entry.getValue();
+                placeholdersFromProps.put(placeholderName, placeholderValue);
+                iterator.remove();
+            }
+        }
+        setPlaceholders(placeholdersFromProps);
+
 		for (String key : props.keySet()) {
-			if (key.startsWith("flyway.mongo.")) {
+			if (key.startsWith("flyway.")) {
 				LOG.warn("Unknown configuration property: " + key);
 			}
 		}
-	}
-
-	/**
-	 * Creates the MigrationResolver.
-	 *
-	 * @param scanner   The Scanner for resolving migrations.
-	 * @return A new, fully configured, MigrationResolver instance.
-	 */
-	private MigrationResolver createMigrationResolver(Scanner scanner) {
-		for (MigrationResolver resolver : resolvers) {
-			ConfigurationInjectionUtils.injectFlywayConfiguration(resolver, this);
-		}
-
-		return new CompositeMongoMigrationResolver(scanner, locations, this, resolvers);
 	}
 
 	/**
@@ -1058,7 +1186,7 @@ public class MongoFlyway implements MongoFlywayConfiguration {
 			MigrationResolver migrationResolver = createMigrationResolver(scanner);
 			Set<MongoFlywayCallback> flywayCallbacks = new LinkedHashSet<MongoFlywayCallback>(Arrays.asList(callbacks));
 			if (!skipDefaultCallbacks) {
-				flywayCallbacks.add(new MongoScriptFlywayCallback(scanner, locations, this));
+				flywayCallbacks.add(new MongoScriptFlywayCallback(scanner, locations, createPlaceholderReplacer(), this));
 			}
 
 			MongoFlywayCallback[] flywayCallbacksArray = flywayCallbacks.toArray(new MongoFlywayCallback[flywayCallbacks.size()]);

@@ -24,7 +24,7 @@ import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
 import org.flywaydb.core.api.MigrationVersion;
 import org.flywaydb.core.api.MigrationType;
-import org.flywaydb.core.internal.dbsupport.mongo.MongoDatabaseUtil;
+import org.flywaydb.core.internal.util.MongoDatabaseUtil;
 import org.flywaydb.core.internal.util.logging.Log;
 import org.flywaydb.core.internal.util.logging.LogFactory;
 

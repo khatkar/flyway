@@ -18,6 +18,7 @@ package org.flywaydb.core.internal.resolver.mongoscript;
 import org.flywaydb.core.api.resolver.ResolvedMigration;
 import org.flywaydb.core.internal.resolver.MongoFlywayConfigurationForTests;
 import org.flywaydb.core.internal.util.Location;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.scanner.Scanner;
 import org.flywaydb.core.internal.util.scanner.classpath.ClassPathResource;
 import org.flywaydb.core.internal.util.scanner.filesystem.FileSystemResource;
@@ -42,7 +43,9 @@ public class MongoScriptMigrationResolverSmallTest {
     public void resolveMigrations() {
         MongoScriptMigrationResolver mongoMigrationResolver =
                 new MongoScriptMigrationResolver(scanner,
-                        new Location("migration/subdir"), MongoFlywayConfigurationForTests.create());
+                                                 new Location("migration/subdir"),
+                                                 PlaceholderReplacer.NO_PLACEHOLDERS,
+                                                 MongoFlywayConfigurationForTests.create());
         Collection<ResolvedMigration> migrations = mongoMigrationResolver.resolveMigrations();
 
         assertEquals(3, migrations.size());
@@ -64,15 +67,20 @@ public class MongoScriptMigrationResolverSmallTest {
                 MongoFlywayConfigurationForTests.createWithPrefix("CheckValidate");
         configuration.setRepeatableMongoMigrationPrefix("X");
         MongoScriptMigrationResolver mongoMigrationResolver =
-                new MongoScriptMigrationResolver(scanner, new Location(""), configuration);
+                new MongoScriptMigrationResolver(scanner,
+                                                 new Location(""),
+                                                 PlaceholderReplacer.NO_PLACEHOLDERS,
+                                                 configuration);
         assertEquals(2, mongoMigrationResolver.resolveMigrations().size());
     }
 
     @Test
     public void resolveMigrationsNonExisting() {
         MongoScriptMigrationResolver mongoMigrationResolver =
-                new MongoScriptMigrationResolver(scanner, new Location("non/existing"),
-                        MongoFlywayConfigurationForTests.createWithPrefix("CheckValidate"));
+                new MongoScriptMigrationResolver(scanner,
+                                                 new Location("non/existing"),
+                                                 PlaceholderReplacer.NO_PLACEHOLDERS,
+                                                 MongoFlywayConfigurationForTests.createWithPrefix("CheckValidate"));
 
         mongoMigrationResolver.resolveMigrations();
     }
@@ -80,8 +88,10 @@ public class MongoScriptMigrationResolverSmallTest {
     @Test
     public void extractScriptName() {
         MongoScriptMigrationResolver mongoMigrationResolver =
-                new MongoScriptMigrationResolver(scanner, new Location("db/migration"),
-                        MongoFlywayConfigurationForTests.createWithPrefix("db_"));
+                new MongoScriptMigrationResolver(scanner,
+                                                 new Location("db/migration"),
+                                                 PlaceholderReplacer.NO_PLACEHOLDERS,
+                                                 MongoFlywayConfigurationForTests.createWithPrefix("db_"));
 
         assertEquals("db_0__init.js", mongoMigrationResolver.extractScriptName(
                 new ClassPathResource("db/migration/db_0__init.js", Thread.currentThread().getContextClassLoader())));
@@ -90,8 +100,10 @@ public class MongoScriptMigrationResolverSmallTest {
     @Test
     public void extractScriptNameRootLocation() {
         MongoScriptMigrationResolver mongoMigrationResolver =
-                new MongoScriptMigrationResolver(scanner, new Location(""),
-                        MongoFlywayConfigurationForTests.createWithPrefix("db_"));
+                new MongoScriptMigrationResolver(scanner,
+                                                 new Location(""),
+                                                 PlaceholderReplacer.NO_PLACEHOLDERS,
+                                                 MongoFlywayConfigurationForTests.createWithPrefix("db_"));
 
         assertEquals("db_0__init.js", mongoMigrationResolver.extractScriptName(
                 new ClassPathResource("db_0__init.js", Thread.currentThread().getContextClassLoader())));
@@ -100,8 +112,10 @@ public class MongoScriptMigrationResolverSmallTest {
     @Test
     public void extractScriptNameFileSystemPrefix() {
         MongoScriptMigrationResolver mongoMigrationResolver =
-                new MongoScriptMigrationResolver(scanner, new Location("filesystem:/some/dir"),
-                        MongoFlywayConfigurationForTests.create());
+                new MongoScriptMigrationResolver(scanner,
+                                                 new Location("filesystem:/some/dir"),
+                                                 PlaceholderReplacer.NO_PLACEHOLDERS,
+                                                 MongoFlywayConfigurationForTests.create());
 
         assertEquals("V3.171__patch.js",
                 mongoMigrationResolver.extractScriptName(new FileSystemResource("/some/dir/V3.171__patch.js")));

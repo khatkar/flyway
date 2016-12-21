@@ -25,7 +25,9 @@ import sbt.Keys._
 import sbt._
 import sbt.classpath._
 
-import scala.collection.JavaConversions.propertiesAsScalaMap
+import scala.collection.JavaConverters.mapAsScalaMapConverter
+import scala.collection.JavaConverters.mapAsJavaMapConverter
+import scala.collection.JavaConverters.propertiesAsScalaMapConverter
 
 object MongoFlywayPlugin extends AutoPlugin {
 
@@ -37,7 +39,7 @@ object MongoFlywayPlugin extends AutoPlugin {
     // common migration settings for all tasks
     //*********************
 
-    val flywayUri = settingKey[String]("The Mongo URI to use to connect to the database.")
+    val flywayMongoUri = settingKey[String]("The Mongo URI to use to connect to the database.")
     val flywayTable = settingKey[String]("The name of the metadata table that will be used by Flyway.(default: schema_version)")
     val flywayBaselineVersion = settingKey[String]("The version to tag an existing schema with when executing baseline. (default: 1)")
     val flywayBaselineDescription = settingKey[String]("The description to tag an existing schema with " +
@@ -81,6 +83,10 @@ object MongoFlywayPlugin extends AutoPlugin {
       "to version 4.0 (unknown to us) has already been applied. Instead of bombing out (fail fast) with an exception, a warning is " +
       "logged and Flyway continues normally. This is useful for situations where one must be able to redeploy an older version of the " +
       "application after the database has been migrated by a newer one. (default: true)")
+    val flywayPlaceholderReplacement = settingKey[Boolean]("Whether placeholders should be replaced. (default: true)")
+    val flywayPlaceholders = settingKey[Map[String, String]]("A map of <placeholder, replacementValue> to apply to mongo js migration scripts.")
+    val flywayPlaceholderPrefix = settingKey[String]("The prefix of every placeholder. (default: ${ )")
+    val flywayPlaceholderSuffix = settingKey[String]("The suffix of every placeholder. (default: } )")
     val flywayBaselineOnMigrate = settingKey[Boolean]("Whether to automatically call baseline when migrate is executed against a " +
       "non-empty database with no metadata table. This database will then be baselined with the {@code baselineVersion} before " +
       "executing the migrations. Only migrations above {@code baselineVersion} will then be applied. This is useful for initial " +
@@ -116,7 +122,10 @@ object MongoFlywayPlugin extends AutoPlugin {
                                             skipDefaultCallbacks: Boolean)
   private case class ConfigMongoMigration(mongoMigrationPrefix: String, repeatableMongoMigrationPrefix: String,
                                           mongoMigrationSeparator: String, mongoMigrationSuffix: String)
-  private case class ConfigMigrate(ignoreFutureMigrations: Boolean, baselineOnMigrate: Boolean, validateOnMigrate: Boolean)
+  private case class ConfigMigrate(ignoreFutureMigrations: Boolean, placeholderReplacement: Boolean,
+                                   placeholders: Map[String, String], placeholderPrefix: String,
+                                   placeholderSuffix: String, baselineOnMigrate: Boolean,
+                                   validateOnMigrate: Boolean)
   private case class Config(base: ConfigBase, migrationLoading: ConfigMigrationLoading,
                             mongoMigration: ConfigMongoMigration, migrate: ConfigMigrate)
 
@@ -137,7 +146,7 @@ object MongoFlywayPlugin extends AutoPlugin {
     import autoImport._
     val defaults = new MongoFlyway()
     Seq[Setting[_]](
-      flywayUri := "",
+      flywayMongoUri := "",
       flywayLocations := List("filesystem:src/main/resources/db/migration"),
       flywayResolvers := Array.empty[String],
       flywaySkipDefaultResolvers := defaults.isSkipDefaultResolvers,
@@ -154,12 +163,16 @@ object MongoFlywayPlugin extends AutoPlugin {
       flywayCallbacks := new Array[String](0),
       flywaySkipDefaultCallbacks := defaults.isSkipDefaultCallbacks,
       flywayIgnoreFutureMigrations := defaults.isIgnoreFutureMigrations,
+      flywayPlaceholderReplacement := defaults.isPlaceholderReplacement,
+      flywayPlaceholders := defaults.getPlaceholders.asScala.toMap,
+      flywayPlaceholderPrefix := defaults.getPlaceholderPrefix,
+      flywayPlaceholderSuffix := defaults.getPlaceholderSuffix,
       flywayBaselineOnMigrate := defaults.isBaselineOnMigrate,
       flywayValidateOnMigrate := defaults.isValidateOnMigrate,
       flywayCleanOnValidationError := defaults.isCleanOnValidationError,
       flywayCleanDisabled := defaults.isCleanDisabled,
 
-      flywayConfigBase := ConfigBase(flywayUri.value, flywayTable.value, flywayBaselineVersion.value,
+      flywayConfigBase := ConfigBase(flywayMongoUri.value, flywayTable.value, flywayBaselineVersion.value,
         flywayBaselineDescription.value),
 
       flywayConfigMigrationLoading := ConfigMigrationLoading(flywayLocations.value, flywayResolvers.value,
@@ -172,6 +185,8 @@ object MongoFlywayPlugin extends AutoPlugin {
         flywayMongoMigrationSuffix.value),
 
       flywayConfigMigrate := ConfigMigrate(flywayIgnoreFutureMigrations.value,
+        flywayPlaceholderReplacement.value, flywayPlaceholders.value,
+        flywayPlaceholderPrefix.value, flywayPlaceholderSuffix.value,
         flywayBaselineOnMigrate.value, flywayValidateOnMigrate.value),
 
       flywayConfig := Config(flywayConfigBase.value, flywayConfigMigrationLoading.value,
@@ -186,9 +201,9 @@ object MongoFlywayPlugin extends AutoPlugin {
       },
 
       flywayInfo := withPrepared((fullClasspath in conf).value, streams.value) {
-          val info = MongoFlyway(flywayConfig.value).info()
-          streams.value.log.info(MigrationInfoDumper.dumpToAsciiTable(info.all()))
-          info
+        val info = MongoFlyway(flywayConfig.value).info()
+        streams.value.log.info(MigrationInfoDumper.dumpToAsciiTable(info.all()))
+        info
       },
 
       flywayRepair := withPrepared((fullClasspath in conf).value, streams.value) {
@@ -211,8 +226,8 @@ object MongoFlywayPlugin extends AutoPlugin {
   }
 
   /**
-   * Registers sbt log as a static logger for Flyway
-   */
+    * Registers sbt log as a static logger for Flyway
+    */
   private def registerAsFlywayLogger(streams: TaskStreams) {
     LogFactory.setLogCreator(SbtLogCreator)
     FlywaySbtLog.streams = Some(streams)
@@ -286,6 +301,9 @@ object MongoFlywayPlugin extends AutoPlugin {
 
     def configure(config: ConfigMigrate): MongoFlyway = {
       flyway.setIgnoreFutureMigrations(config.ignoreFutureMigrations)
+      flyway.setPlaceholders(config.placeholders.asJava)
+      flyway.setPlaceholderPrefix(config.placeholderPrefix)
+      flyway.setPlaceholderSuffix(config.placeholderSuffix)
       flyway.setBaselineOnMigrate(config.baselineOnMigrate)
       flyway.setValidateOnMigrate(config.validateOnMigrate)
       flyway
@@ -293,8 +311,8 @@ object MongoFlywayPlugin extends AutoPlugin {
 
     def configureSysProps(uri: String): MongoFlyway = {
       val props = new Properties()
-      val uriKey = "flyway.mongo.uri"
-      System.getProperties.filter { e => e._1.startsWith("flyway") }
+      val uriKey = "flyway.mongoUri"
+      System.getProperties.asScala.filter { e => e._1.startsWith("flyway") }
         .foreach { e => props.put(e._1, e._2) }
       if (!sys.props.contains(uriKey)) props.put(uriKey, uri)
       flyway.configure(props)
@@ -316,6 +334,5 @@ object MongoFlywayPlugin extends AutoPlugin {
       streams.foreach(_.log.error(message)); streams.foreach(_.log.trace(e))
     }
   }
+
 }
-
-

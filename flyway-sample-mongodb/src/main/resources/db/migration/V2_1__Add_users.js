@@ -15,7 +15,7 @@
  */
 db.runCommand({
     insert: 'users',
-    documents: [{name: 'Alice', age: 2}]
+    documents: [{name: '${first_name}', age: 2}]
 });
 
 db.runCommand({
@@ -24,4 +24,9 @@ db.runCommand({
         {name: 'Bob'},
         {name: "Mallory"}
     ]
+});
+
+use(db2);
+db.runCommand({
+    create: 'sampleCollection'
 });

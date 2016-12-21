@@ -14,4 +14,4 @@ resolvers += (
 )
 
 // Wrong port specified here. Test should override this port with the correct one
-flywayUri := "mongodb://localhost:27018/flyway_sample"
+flywayMongoUri := "mongodb://localhost:27018/flyway_sample"

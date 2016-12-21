@@ -25,6 +25,7 @@ import org.flywaydb.core.internal.resolver.spring.SpringMongoMigrationResolver;
 import org.flywaydb.core.internal.util.FeatureDetector;
 import org.flywaydb.core.internal.util.Location;
 import org.flywaydb.core.internal.util.Locations;
+import org.flywaydb.core.internal.util.PlaceholderReplacer;
 import org.flywaydb.core.internal.util.scanner.Scanner;
 
 import java.util.ArrayList;
@@ -55,16 +56,18 @@ public class CompositeMongoMigrationResolver implements MigrationResolver {
 	 * @param scanner                      The Scanner for loading migrations on the classpath.
 	 * @param config                       The flyway instance containing Mongo relevant information.
 	 * @param locations                    The locations where migrations are located.
+     * @param placeholderReplacer          The placeholder replacer to use.
 	 * @param customMigrationResolvers     Custom Migration Resolvers.
 	 */
 	public CompositeMongoMigrationResolver(Scanner scanner, Locations locations, MongoFlywayConfiguration config,
+                                           PlaceholderReplacer placeholderReplacer,
                                            MigrationResolver... customMigrationResolvers) {
 		if (!config.isSkipDefaultResolvers()) {
 			String databaseName = config.getDatabaseName();
 			boolean springMongoAvailable = new FeatureDetector(scanner.getClassLoader()).isSpringMongoAvailable();
-			for (Location location : locations.getLocations()) {
+			for (Location location: locations.getLocations()) {
 				migrationResolvers.add(new MongoMigrationResolver(scanner, location, config));
-				migrationResolvers.add(new MongoScriptMigrationResolver(scanner, location, config));
+				migrationResolvers.add(new MongoScriptMigrationResolver(scanner, location, placeholderReplacer, config));
 						
 				if (springMongoAvailable) {
 					migrationResolvers.add(new SpringMongoMigrationResolver(databaseName, scanner, location, config));

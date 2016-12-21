@@ -35,9 +35,9 @@ public class MongoFlywayMediumTest  extends EmbeddedMongoDb {
 
 	private MongoFlyway build() {
         Properties props = new Properties();
-        props.setProperty("flyway.mongo.locations", "db.migrations.mongo");
-        props.setProperty("flyway.mongo.validateOnMigrate", "false");
-        props.setProperty("flyway.mongo.uri", getMongoUri());
+        props.setProperty("flyway.locations", "db.migrations.mongo");
+        props.setProperty("flyway.validateOnMigrate", "false");
+        props.setProperty("flyway.mongoUri", getMongoUri());
 
 		MongoFlyway flyway = new MongoFlyway();
 		flyway.configure(props);

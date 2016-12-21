@@ -30,7 +30,6 @@ public abstract class MongoScriptMigrationTestCase extends EmbeddedMongoDb {
      * The base directory for the regular test migrations.
      */
     protected static final String BASEDIR = "migration/mongoscript";
-    protected static final String MONGO_PREFIX = "flyway.mongo.";
 
     protected MongoClient client;
     protected MongoFlyway flyway;
@@ -38,9 +37,9 @@ public abstract class MongoScriptMigrationTestCase extends EmbeddedMongoDb {
     @Before
     public void setUp() throws Exception {
         Properties mongoProperties = new Properties();
-        mongoProperties.setProperty(MONGO_PREFIX + "locations", BASEDIR);
-        mongoProperties.setProperty(MONGO_PREFIX + "validateOnMigrate", "false");
-        mongoProperties.setProperty(MONGO_PREFIX + "uri", getMongoUri());
+        mongoProperties.setProperty("flyway.locations", BASEDIR);
+        mongoProperties.setProperty("flyway.validateOnMigrate", "false");
+        mongoProperties.setProperty("flyway.mongoUri", getMongoUri());
         flyway = new MongoFlyway();
         flyway.configure(mongoProperties);
         client = getMongoClient();

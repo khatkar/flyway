@@ -28,9 +28,15 @@ import java.util.regex.Pattern;
 public class MongoStatementBuilder {
 
     /**
-     * RegEx pattern for matching a db.runCommand(..) format string.
+     * RegEx pattern for matching a {@code db.runCommand(..)} format string.
      */
     private static final Pattern commandPattern = Pattern.compile("db\\.runCommand\\(([^)]+)\\)");
+
+    /**
+     * RegEx pattern for matching a {@code use(<dbName>)} format string. This statement is used to change the
+     * database in scope where a dbCommand should be run.
+     */
+    private static final Pattern useDbCommandPattern = Pattern.compile("use\\((\\w+)\\)");
 
     /**
      * The current statement, as it is being built.
@@ -127,14 +133,28 @@ public class MongoStatementBuilder {
     }
 
     /**
+     * @param dbName The database name where this statement will be applied.
      * @return The assembled statement. Returns null if the assembled statement is not a mongo
      * database command.
      */
-    public MongoStatement getMongoStatement() {
+    public MongoStatement getMongoStatement(String dbName) {
         String command = statement.toString();
         Matcher commandMatcher = commandPattern.matcher(command);
         if (commandMatcher.find()) {
-            return new MongoStatement(lineNumber, commandMatcher.group(1));
+            return new MongoStatement(lineNumber, commandMatcher.group(1), dbName);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * @return The name of the database currently in scope. Returns null if not found.
+     */
+    public String getDbName() {
+        String command = statement.toString();
+        Matcher useDbCommandMatcher = useDbCommandPattern.matcher(command);
+        if (useDbCommandMatcher.find()) {
+            return useDbCommandMatcher.group(1);
         } else {
             return null;
         }
