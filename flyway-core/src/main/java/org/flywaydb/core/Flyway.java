@@ -303,6 +303,11 @@ public class Flyway implements SQLFlywayConfiguration {
     private boolean dbConnectionInfoPrinted;
 
     /**
+     * Whether to only use a single connection for both metadata table management and applying migrations.
+     */
+    private boolean useSingleConnection;
+
+    /**
      * Creates a new instance of Flyway. This is your starting point.
      */
     public Flyway() {
@@ -842,6 +847,26 @@ public class Flyway implements SQLFlywayConfiguration {
     }
 
     /**
+     * Allows flyway to use a single jdbc connection for both metadata table management and
+     * applying migrations.
+     *
+     * @param useSingleConnection {@code true} if Flyway should use a single connection for both
+     * metadata table management and applying migrations. (default: {@code false})
+     */
+    public void setUseSingleConnection(boolean useSingleConnection) {
+        this.useSingleConnection = useSingleConnection;
+    }
+
+
+    /**
+     * @return {@code True} if Flyway will use a single connection for both metadata table management
+     * and applying migrations. {@code False} if not.
+     */
+    public boolean isUseSingleConnection() {
+        return useSingleConnection;
+    }
+
+    /**
      * Gets the callbacks for lifecycle notifications.
      *
      * @return The callbacks for lifecycle notifications. An empty array if none. (default: none)
@@ -1302,6 +1327,10 @@ public class Flyway implements SQLFlywayConfiguration {
         if (skipDefaultCallbacksProp != null) {
             setSkipDefaultCallbacks(Boolean.parseBoolean(skipDefaultCallbacksProp));
         }
+        String useSingleConnectionProp = getValueAndRemoveEntry(props, "flyway.useSingleConnection");
+        if (useSingleConnectionProp != null) {
+            setUseSingleConnection(Boolean.parseBoolean(useSingleConnectionProp));
+        }
 
         Map<String, String> placeholdersFromProps = new HashMap<String, String>(placeholders);
         Iterator<Map.Entry<String, String>> iterator = props.entrySet().iterator();
@@ -1360,7 +1389,7 @@ public class Flyway implements SQLFlywayConfiguration {
             }
 
             connectionMetaDataTable = JdbcUtils.openConnection(dataSource);
-            connectionUserObjects = JdbcUtils.openConnection(dataSource);
+            connectionUserObjects = useSingleConnection ? connectionMetaDataTable : JdbcUtils.openConnection(dataSource);
 
             DbSupport dbSupport = DbSupportFactory.createDbSupport(connectionMetaDataTable, !dbConnectionInfoPrinted);
             dbConnectionInfoPrinted = true;
