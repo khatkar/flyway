@@ -105,4 +105,8 @@ public interface SQLFlywayConfiguration extends FlywayConfiguration {
 	 */
 	String[] getSchemas();
 
+	/**
+	 * @return Whether to only use a single connection for both metadata table management and applying migrations.
+	 */
+	boolean isUseSingleConnection();
 }

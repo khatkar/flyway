@@ -85,6 +85,10 @@ public class FlywayConfigurationForTests implements SQLFlywayConfiguration {
         this.skipDefaultCallbacks = skipDefaultCallbacks;
     }
 
+    public boolean isUseSingleConnection() {
+        return false;
+    }
+
     @Override
     public ClassLoader getClassLoader() {
         return classLoader;
